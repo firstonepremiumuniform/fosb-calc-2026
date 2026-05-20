@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="googlebot" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FOSB Calculator">
@@ -11,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   /* ============ REVOLUT-INSPIRED REDESIGN ============
      Two-mode canvas: pure white catalogue + black hero bands.
@@ -65,7 +68,7 @@
 
   html, body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #F5F5F5;
+    background: #E8E8E8;
     color: var(--ink);
     font-size: 15px;
     line-height: 1.5;
@@ -434,6 +437,31 @@
   .bd-tag.addon {
     background: var(--brand-soft); color: var(--brand-deep);
   }
+  .bd-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    background: var(--surface-soft);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+  }
+  .bd-icon svg { display: block; }
+  .addon-row .bd-icon {
+    width: 28px; height: 28px;
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .bd-row.overridden .bd-icon {
+    background: rgba(34, 197, 94, 0.12);
+    color: rgb(22, 163, 74);
+  }
+  .name-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-soft);
+    vertical-align: -3px;
+    margin-right: 6px;
+  }
+  .name-icon svg { display: block; }
   .bd-name {
     font-size: 14px; font-weight: 600; color: var(--ink);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1051,6 +1079,31 @@
     font-size: 24px; font-weight: 700;
     letter-spacing: -0.025em;
   }
+  /* Role tag pill inside modal header */
+  .modal-role-tag {
+    margin-left: 12px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: var(--r-pill);
+    background: var(--canvas-dark);
+    color: var(--on-dark);
+    line-height: 1.4;
+    flex-shrink: 0;
+  }
+  .modal-role-tag.internal {
+    background: var(--brand);
+  }
+  .modal-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .modal-header h2 {
+    display: inline-flex;
+    align-items: center;
+  }
   .modal-header .close {
     background: transparent; border: none; cursor: pointer;
     font-size: 26px; color: var(--ink-faint);
@@ -1162,12 +1215,27 @@
     border-color: var(--brand);
     background: var(--brand-soft);
   }
-  .product-option .left { display: flex; align-items: center; gap: 14px; }
+  .product-option .left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+  .product-option .product-thumb {
+    width: 48px; height: 48px;
+    flex-shrink: 0;
+    border-radius: var(--r-chip);
+    background: var(--surface-soft);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft);
+  }
+  .product-option.selected .product-thumb {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--brand);
+  }
+  .product-option .product-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .product-option .code {
-    font-size: 11px; font-weight: 600;
-    color: var(--ink-faint); width: 60px;
-    padding: 3px 8px; background: var(--surface-soft);
+    font-size: 10px; font-weight: 700;
+    color: var(--ink-faint);
+    padding: 2px 7px; background: var(--surface-soft);
     border-radius: var(--r-pill); text-align: center;
+    display: inline-block; width: fit-content;
+    letter-spacing: 0.04em;
   }
   .product-option .name { font-weight: 600; font-size: 14px; letter-spacing: -0.005em; }
   .product-option .brand-tag {
@@ -1280,10 +1348,197 @@
     color: var(--ink-faint); letter-spacing: 0.02em;
   }
 
+  /* ============ ROLE SWITCH ============ */
+  .role-strip {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--canvas-light);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-xs);
+  }
+  .role-strip .role-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .role-strip .role-pills {
+    display: flex;
+    gap: 6px;
+    background: var(--surface-soft);
+    padding: 4px;
+    border-radius: var(--r-pill);
+    flex: 1;
+    max-width: 480px;
+  }
+  .role-pill {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    transition: all 200ms;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px;
+    line-height: 1.2;
+  }
+  .role-pill:hover { background: rgba(0,0,0,0.04); }
+  .role-pill.active {
+    background: var(--canvas-dark);
+    color: var(--on-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .role-pill.active[data-role="internal"] {
+    background: var(--brand);
+    color: var(--on-dark);
+    box-shadow: 0 2px 8px rgba(210, 60, 53, 0.3);
+  }
+  .role-pill .role-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .role-pill.active .role-name { color: var(--on-dark); }
+  .role-pill .role-desc {
+    font-size: 10px;
+    color: var(--ink-faint);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .role-pill.active .role-desc { color: rgba(255,255,255,0.7); }
+
+  /* ============ SETTINGS UI ============ */
+  .settings-btn {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: var(--on-dark);
+    cursor: pointer;
+    width: 36px; height: 36px;
+    border-radius: var(--r-pill);
+    font-size: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all 160ms;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .settings-btn:hover {
+    background: rgba(255,255,255,0.18);
+    transform: rotate(45deg);
+  }
+  .settings-section {
+    margin-bottom: 24px;
+  }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-label {
+    font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft); font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .settings-hint {
+    font-size: 12px; color: var(--ink-soft);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .settings-hint code {
+    font-family: 'SF Mono', Menlo, monospace;
+    background: var(--surface-soft);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .settings-info {
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--r-chip);
+    padding: 4px 0;
+  }
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-key {
+    font-size: 12px; color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .info-val {
+    font-size: 13px; color: var(--ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .info-val.source-remote { color: #15803d; }
+  .info-val.source-builtin { color: var(--ink-soft); }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--line-strong);
+    border-radius: var(--r-chip);
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 200ms;
+    background: var(--canvas-light);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+  }
+  .upload-zone.dragover {
+    border-style: solid;
+  }
+  .upload-icon {
+    font-size: 32px;
+    color: var(--ink-faint);
+    line-height: 1;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .upload-zone.dragover .upload-icon,
+  .upload-zone:hover .upload-icon {
+    color: var(--brand);
+  }
+  .upload-text {
+    font-size: 14px; color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .upload-text strong { color: var(--brand); font-weight: 700; }
+  .upload-hint {
+    font-size: 11px; color: var(--ink-faint);
+  }
+  .upload-hint.error { color: var(--danger); font-weight: 600; }
+  .upload-hint.success { color: #15803d; font-weight: 600; }
+
   /* ============ MOBILE (iPhone & small screens) ============ */
   @media (max-width: 640px) {
     /* Tighter page padding */
     .page { padding: 16px 12px 60px; }
+
+    /* Role strip stacks on mobile */
+    .role-strip {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: var(--r-chip);
+    }
+    .role-strip .role-pills { max-width: none; }
+    .role-pill { padding: 8px 8px; }
+    .role-pill .role-name { font-size: 12px; }
+    .role-pill .role-desc { font-size: 9px; }
 
     /* Header: stack and compact */
     header {
@@ -1345,6 +1600,12 @@
     .bd-comp { flex-wrap: wrap; gap: 8px; }
     .bd-name { white-space: normal; font-size: 13px; }
     .bd-code { font-size: 10px; }
+    .bd-icon { width: 28px; height: 28px; border-radius: 8px; }
+    .bd-icon svg { width: 22px; height: 22px; }
+    .addon-row .bd-icon { width: 24px; height: 24px; }
+    .addon-row .bd-icon svg { width: 18px; height: 18px; }
+    .product-option .product-thumb { width: 40px; height: 40px; }
+    .product-option .product-thumb svg { width: 30px; height: 30px; }
     .bd-calc {
       justify-content: flex-end;
       flex-wrap: wrap;
@@ -1507,10 +1768,26 @@
       </div>
     </div>
     <div class="meta">
-      <span><span class="dot"></span>157 items · 13 add-ons</span>
+      <span><span class="dot"></span><span id="catalog-count">157 items · 13 add-ons</span></span>
       <span id="ts"></span>
+      <button class="settings-btn" id="settings-btn" type="button" title="Update Pricing">⚙</button>
     </div>
   </header>
+
+  <!-- Role switch -->
+  <div class="role-strip" id="role-strip">
+    <div class="role-label">Pricing view</div>
+    <div class="role-pills">
+      <button class="role-pill" data-role="agent" type="button">
+        <span class="role-name">Agent</span>
+        <span class="role-desc">Price Per Unit</span>
+      </button>
+      <button class="role-pill" data-role="internal" type="button">
+        <span class="role-name">FOSB Internal</span>
+        <span class="role-desc">Cost</span>
+      </button>
+    </div>
+  </div>
 
   <div class="layout">
     <div>
@@ -1530,7 +1807,7 @@
           <button class="btn" id="print-btn"><span class="icon">⎙</span> Print</button>
           <button class="btn" id="export-btn"><span class="icon">↓</span> Export CSV</button>
           <div style="flex:1"></div>
-          <button class="btn btn-primary btn-lg" id="add-product-btn" onclick="document.getElementById('modal').classList.add('show'); if(window.openAddProduct) window.openAddProduct();">
+          <button class="btn btn-primary btn-lg" id="add-product-btn" onclick="window.openAddProduct()">
             <span class="icon">+</span> Add Product
           </button>
         </div>
@@ -1624,6 +1901,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="modal-title">Add Product</h2>
+      <span class="modal-role-tag" id="modal-role-tag">Agent · Price Per Unit</span>
       <button class="close" id="modal-close" type="button">×</button>
     </div>
     <div class="modal-body">
@@ -1671,14 +1949,122 @@
   </div>
 </div>
 
+<!-- SETTINGS MODAL -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Pricing Settings</h2>
+      <button class="close" id="settings-close" type="button">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <div class="settings-label">Current Catalog</div>
+        <div class="settings-info">
+          <div class="info-row">
+            <span class="info-key">Products</span>
+            <span class="info-val" id="info-products">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Add-ons</span>
+            <span class="info-val" id="info-addons">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Source</span>
+            <span class="info-val" id="info-source">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Last updated</span>
+            <span class="info-val" id="info-updated">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Update from Excel</div>
+        <p class="settings-hint">Drop your latest <strong>Agent_Calculator_-_Internal.xlsx</strong> below. The calculator will read all products and add-ons from the <strong>PricingData</strong> sheet (same format as your existing Excel).</p>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="upload-input" accept=".xlsx,.xls" style="display:none">
+          <div class="upload-icon">↑</div>
+          <div class="upload-text">
+            <strong>Click here</strong> or drag an .xlsx file
+          </div>
+          <div class="upload-hint" id="upload-hint">Reads PricingData sheet · Up to 1000 rows supported</div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="parsed-section" style="display:none">
+        <div class="settings-label">New Prices Ready</div>
+        <div class="settings-info">
+          <div class="info-row">
+            <span class="info-key">New products</span>
+            <span class="info-val" id="parsed-products">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">New add-ons</span>
+            <span class="info-val" id="parsed-addons">—</span>
+          </div>
+          <div class="info-row" id="applied-row" style="display:none">
+            <span class="info-key">Status</span>
+            <span class="info-val source-remote">✓ Applied to this browser</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px">
+          <button class="btn btn-brand btn-lg" id="apply-now-btn" style="width:100%; justify-content:center">
+            <span class="icon">⚡</span> Apply to This Browser Now
+          </button>
+
+          <div style="font-size:11px; color:var(--ink-faint); text-align:center; padding:4px 0">— or share with your team —</div>
+
+          <button class="btn btn-lg" id="download-html-btn" style="width:100%; justify-content:center">
+            <span class="icon">↓</span> Download New index.html
+          </button>
+          <button class="btn" id="download-pricing-btn" style="width:100%; justify-content:center">
+            <span class="icon">↓</span> Download pricing.json (alternative)
+          </button>
+        </div>
+
+        <p class="settings-hint" style="margin-top:12px">
+          <strong>Just me:</strong> click "Apply to This Browser Now". Prices update instantly, saved on this device only.<br><br>
+          <strong>Share with team:</strong> download the new <code>index.html</code> and replace it on GitHub. Everyone gets the update on next page load.
+        </p>
+      </div>
+
+      <div class="settings-section" id="reset-section" style="display:none">
+        <button class="btn" id="reset-prices-btn" style="width:100%; justify-content:center">
+          <span class="icon">↺</span> Reset to Original Prices
+        </button>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div class="preview" style="font-size:11px; color:var(--ink-faint)">
+        Calculator reads <code>pricing.json</code> from the same folder on load. Falls back to built-in prices if not found.
+      </div>
+      <button class="btn" id="settings-done" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
+// Expose Add Product handler IMMEDIATELY — before any other code that could throw
+// This ensures the inline onclick="window.openAddProduct()" always finds a function
+window.openAddProduct = function() {
+  var modal = document.getElementById('modal');
+  if (modal) modal.classList.add('show');
+  // The full handler is wired up later if the rest of the script loads OK
+  if (window._realOpenAddProduct) window._realOpenAddProduct();
+};
+
 (function() {
   'use strict';
 
-  const PRODUCTS = {"AP03":{"item":"Apron","brand":"Oren","tiers":[],"category":"Aprons"},"AP04":{"item":"Apron","brand":"Oren","tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10},{"qty":99,"price":9.5}],"category":"Aprons"},"CI10":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"category":"Polo Shirts"},"CI11":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"category":"Polo Shirts"},"CI13":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"category":"Polo Shirts"},"CJ01":{"item":"Jackets (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":76},{"qty":49,"price":75.5},{"qty":99,"price":75}],"category":"Jackets"},"EJ02":{"item":"Jackets (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":48.6},{"qty":49,"price":48.1},{"qty":99,"price":47.6}],"category":"Jackets"},"EJ03":{"item":"Bomber Jackets (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":58.9},{"qty":49,"price":58.4},{"qty":99,"price":57.9}],"category":"Jackets"},"CT51":{"item":"Round Neck T-Shirts (S/S, 160gsm)","brand":"Oren","tiers":[{"qty":29,"price":8.5},{"qty":49,"price":8},{"qty":99,"price":7.5}],"category":"T-Shirts"},"CT52 (K)":{"item":"Round Neck T-Shirts (S/S, 160gsm)","brand":"Oren","tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"category":"T-Shirts"},"CT54":{"item":"Round Neck T-Shirts (L/S, 160gsm)","brand":"Oren","tiers":[{"qty":29,"price":12.9},{"qty":49,"price":12.4},{"qty":99,"price":11.9}],"category":"T-Shirts"},"CT55":{"item":"Round Neck Raglan T-Shirts (S/S, 160gsm)","brand":"Oren","tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"category":"T-Shirts"},"CT56":{"item":"Round Neck Raglan T-Shirts (3/4 Sleeve, 160gsm)","brand":"Oren","tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"category":"T-Shirts"},"CT60":{"item":"Round Neck T-Shirts (S/S, 180gsm)","brand":"Oren","tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"category":"T-Shirts"},"CT71":{"item":"Round Neck T-Shirts (S/S, 200gsm)","brand":"Oren","tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"category":"T-Shirts"},"F116":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F117 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F118":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F119 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[],"category":"Shirts"},"F126":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F127 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F128":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F129 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F130":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F131 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F132":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F133 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F134":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F135 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F140":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F141 (F)":{"item":"Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F142":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F143 (F)":{"item":"Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F144":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F145 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"F146":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":41.9},{"qty":49,"price":41.4},{"qty":99,"price":40.9}],"category":"Shirts"},"F147 (F)":{"item":"Shirts (Muslimah, L/S)","brand":"Oren","tiers":[{"qty":29,"price":45.7},{"qty":49,"price":45.2},{"qty":99,"price":44.7}],"category":"Muslimah Wear"},"F148":{"item":"Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"category":"Shirts"},"F149 (F)":{"item":"Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"category":"Shirts"},"HC01":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"category":"Polo Shirts"},"HC05 (F)":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"category":"Polo Shirts"},"HC09":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":19},{"qty":49,"price":18.5},{"qty":99,"price":18}],"category":"Polo Shirts"},"HC10":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"HC11":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"HC12":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.5},{"qty":49,"price":15},{"qty":99,"price":14.5}],"category":"Polo Shirts"},"HC15":{"item":"Polo Shirts (S/S with Hidden Pocket)","brand":"Oren","tiers":[{"qty":29,"price":19},{"qty":49,"price":18.5},{"qty":99,"price":18}],"category":"Polo Shirts"},"HC16":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.7},{"qty":49,"price":16.2},{"qty":99,"price":15.7}],"category":"Polo Shirts"},"HC20":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"HC21":{"item":"Stand Collar Shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Shirts"},"HC22":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"HC23":{"item":"Stand Collar Shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Shirts"},"HC24":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.7},{"qty":49,"price":17.2},{"qty":99,"price":16.7}],"category":"Polo Shirts"},"HC25":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"HC26":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"HC27":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20},{"qty":49,"price":19.5},{"qty":99,"price":19}],"category":"Polo Shirts"},"HC28":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20},{"qty":49,"price":19.5},{"qty":99,"price":19}],"category":"Polo Shirts"},"HC29":{"item":"Polo shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.7},{"qty":49,"price":17.2},{"qty":99,"price":16.7}],"category":"Polo Shirts"},"HZ01":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":21.9},{"qty":49,"price":21.4},{"qty":99,"price":20.9}],"category":"Polo Shirts"},"JK02":{"item":"Jackets (L/S with Reflective Tape)","brand":"Oren","tiers":[{"qty":29,"price":44.8},{"qty":49,"price":44.3},{"qty":99,"price":43.8}],"category":"Jackets"},"LP01":{"item":"Pants","brand":"Oren","tiers":[{"qty":29,"price":44.8},{"qty":49,"price":44.3},{"qty":99,"price":43.8}],"category":"Pants"},"OT01":{"item":"Oversized Tee (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"category":"T-Shirts"},"OV02":{"item":"Coverall (with Reflective Tape)","brand":"Oren","tiers":[{"qty":29,"price":64.7},{"qty":49,"price":64.2},{"qty":99,"price":63.7}],"category":"Jackets"},"QD04":{"item":"Round Neck T-Shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"T-Shirts"},"QD06":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"category":"Polo Shirts"},"QD15 (F)":{"item":"Round Neck T-Shirt (S/S)","brand":"Oren","tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"category":"T-Shirts"},"QD16 (F)":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"category":"Polo Shirts"},"QD18":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Shirts"},"QD21(F)":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Shirts"},"QD25":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"category":"Polo Shirts"},"QD30":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Shirts"},"QD31":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"category":"Polo Shirts"},"QD33":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"category":"Polo Shirts"},"QD34":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"category":"Polo Shirts"},"QD36":{"item":"Round Neck Raglan T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"category":"T-Shirts"},"QD37":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":19.6},{"qty":49,"price":19.1},{"qty":99,"price":18.6}],"category":"Polo Shirts"},"QD43":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"category":"T-Shirts"},"QD46":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"category":"T-Shirts"},"QD47":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Polo Shirts"},"QD48":{"item":"Round Neck Raglan T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"category":"T-Shirts"},"QD49":{"item":"Round Neck Raglan T-Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":14.3},{"qty":49,"price":13.8},{"qty":99,"price":13.3}],"category":"T-Shirts"},"QD50":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10},{"qty":99,"price":9.5}],"category":"T-Shirts"},"QD51":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"category":"T-Shirts"},"QD52":{"item":"V-Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10},{"qty":99,"price":9.5}],"category":"T-Shirts"},"QD53":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD54":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"category":"T-Shirts"},"QD55":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"category":"T-Shirts"},"QD56":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"category":"T-Shirts"},"QD57":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":12.9},{"qty":49,"price":12.4},{"qty":99,"price":11.9}],"category":"T-Shirts"},"QD58":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"category":"Polo Shirts"},"QD59":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"category":"T-Shirts"},"QD60":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"category":"Polo Shirts"},"QD61":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"category":"Polo Shirts"},"QD62":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"category":"T-Shirts"},"QD63":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Polo Shirts"},"QD64":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD65":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Polo Shirts"},"QD66":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"category":"T-Shirts"},"QD67":{"item":"Polo Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"category":"Polo Shirts"},"QD68 (K)":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"category":"T-Shirts"},"QD69":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":19},{"qty":49,"price":18.5},{"qty":99,"price":18}],"category":"Polo Shirts"},"QD70":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"category":"T-Shirts"},"QD71":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD72":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"category":"T-Shirts"},"QD73":{"item":"Round Neck Tank Top (Sleeveless)","brand":"Oren","tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"category":"Vests"},"QD74":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"category":"Polo Shirts"},"QD75":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"category":"T-Shirts"},"QD76":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD77":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"category":"T-Shirts"},"QD78":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD79":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD80":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"category":"Polo Shirts"},"SJ01":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"category":"Polo Shirts"},"SJ03":{"item":"Polo Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":18.1},{"qty":49,"price":17.6},{"qty":99,"price":17.1}],"category":"Polo Shirts"},"SJ04":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"SJ05":{"item":"Polo Shirts (L/S)","brand":"Oren","tiers":[{"qty":29,"price":19},{"qty":49,"price":18.5},{"qty":99,"price":18}],"category":"Polo Shirts"},"SJ08":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"SJ09":{"item":"Polo Shirts (S/S)","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"SK01":{"item":"Muslimah (L/S)","brand":"Oren","tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"category":"Muslimah Wear"},"SK02":{"item":"Muslimah (L/S)","brand":"Oren","tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"category":"Muslimah Wear"},"SK03":{"item":"Muslimah (L/S)","brand":"Oren","tiers":[{"qty":29,"price":18.1},{"qty":49,"price":17.6},{"qty":99,"price":17.1}],"category":"Muslimah Wear"},"SK04":{"item":"Muslimah (L/S)","brand":"Oren","tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"category":"Muslimah Wear"},"SK05":{"item":"Muslimah (L/S) , Quick Dry","brand":"Oren","tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"category":"Muslimah Wear"},"TT01":{"item":"Premium Polo Shirt (S/S)","brand":"Oren","tiers":[],"category":"Polo Shirts"},"TT02":{"item":"Premium Polo Shirt (S/S)","brand":"Oren","tiers":[],"category":"Polo Shirts"},"TW01":{"item":"Towelling (Hand Towel)","brand":"Oren","tiers":[{"qty":29,"price":5.3},{"qty":49,"price":4.8},{"qty":99,"price":4.3}],"category":"Towels"},"TW03":{"item":"Towelling (Bath Towel) [0300/0304/0307/0310/0314/0325]","brand":"Oren","tiers":[{"qty":29,"price":17.1},{"qty":29,"price":20},{"qty":49,"price":16.6},{"qty":49,"price":19.5},{"qty":99,"price":16.1},{"qty":99,"price":19}],"category":"Towels"},"TW06":{"item":"Towelling (Bath Towel) [0600/0604/0607/0610/0614/0625]","brand":"Oren","tiers":[{"qty":29,"price":21},{"qty":29,"price":23.8},{"qty":49,"price":20.5},{"qty":49,"price":23.3},{"qty":99,"price":20},{"qty":99,"price":22.8}],"category":"Towels"},"TW07":{"item":"Towelling (Hand Towel)","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"category":"Towels"},"TW08":{"item":"Towelling (Bath Towel)","brand":"Oren","tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"category":"Towels"},"TW09":{"item":"Towelling (Hand Towel)","brand":"Oren","tiers":[{"qty":29,"price":4.2},{"qty":49,"price":3.7},{"qty":99,"price":3.2}],"category":"Towels"},"TW10":{"item":"Towelling (Sport Hand Towel)","brand":"Oren","tiers":[{"qty":29,"price":10.1},{"qty":49,"price":9.6},{"qty":99,"price":9.1}],"category":"Towels"},"VJ06":{"item":"Vest Jacket (Sleeveless)","brand":"Oren","tiers":[{"qty":29,"price":25.8},{"qty":49,"price":25.3},{"qty":99,"price":24.8}],"category":"Vests"},"VT0203":{"item":"Unisex Sleeveless Safety Vest (with reflective tape)","brand":"Oren","tiers":[{"qty":29,"price":9.6},{"qty":49,"price":9.1},{"qty":99,"price":8.6}],"category":"Vests"},"VT03":{"item":"Unisex Sleeveless Utility Vest","brand":"Oren","tiers":[{"qty":29,"price":27.7},{"qty":49,"price":27.2},{"qty":99,"price":26.7}],"category":"Vests"},"WB04":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":40},{"qty":49,"price":39.5},{"qty":99,"price":39}],"category":"Windbreakers"},"WB05":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":40},{"qty":49,"price":39.5},{"qty":99,"price":39}],"category":"Windbreakers"},"WB06":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":33.4},{"qty":49,"price":32.9},{"qty":99,"price":32.4}],"category":"Windbreakers"},"WR01":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":50},{"qty":49,"price":49.5},{"qty":99,"price":49}],"category":"Windbreakers"},"WR03":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":52.4},{"qty":49,"price":51.9},{"qty":99,"price":51.4}],"category":"Windbreakers"},"WR04":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","tiers":[{"qty":29,"price":52.4},{"qty":49,"price":51.9},{"qty":99,"price":51.4}],"category":"Windbreakers"},"CP01":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"Caps"},"CP03":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"Caps"},"CP04":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"Caps"},"CP05":{"item":"Baseball Caps (Polyster)","brand":"Oren","tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.2},{"qty":99,"price":5.7}],"category":"Caps"},"CP09":{"item":"Baseball Caps (Polyster)","brand":"Oren","tiers":[{"qty":29,"price":8},{"qty":49,"price":7.5},{"qty":99,"price":7}],"category":"Caps"},"CP12":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"category":"Caps"},"CP13":{"item":"Baseball Caps (Polyster)","brand":"Oren","tiers":[{"qty":29,"price":8},{"qty":49,"price":7.5},{"qty":99,"price":7}],"category":"Caps"},"CP14":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"category":"Caps"},"CP17":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"category":"Caps"},"CP18":{"item":"Baseball Caps (Polyster)","brand":"Oren","tiers":[{"qty":29,"price":8},{"qty":49,"price":7.5},{"qty":99,"price":7}],"category":"Caps"},"CP19":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"category":"Caps"},"CP21":{"item":"Military Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":8},{"qty":49,"price":7.5},{"qty":99,"price":7}],"category":"Caps"},"CP23":{"item":"Snapback Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"Caps"},"CP24 (K)":{"item":"Baseball Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.2},{"qty":49,"price":6.7},{"qty":99,"price":6.2}],"category":"Caps"},"CP25":{"item":"Snapback Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"category":"Caps"},"CP26":{"item":"Truckers Caps (Cotton)","brand":"Oren","tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.2},{"qty":99,"price":5.7}],"category":"Caps"},"FH01":{"item":"Fisherman Hat (Cotton) [0101/0103/0102]","brand":"Oren","tiers":[{"qty":29,"price":8.6},{"qty":29,"price":9.5},{"qty":49,"price":8.1},{"qty":49,"price":9},{"qty":99,"price":7.6},{"qty":99,"price":8.5}],"category":"Hats"}};
-  const ADDONS = {"Emb1":{"item":"Embroidery logo (1000 stitches - 8000 stitches)","brand":"Own","tiers":[{"qty":9,"price":6},{"qty":99,"price":3},{"qty":199,"price":2.5}]},"Emb2":{"item":"Embroidery logo (8000 stitches above)","brand":"Own","tiers":[{"qty":9,"price":7},{"qty":99,"price":3.8},{"qty":199,"price":3}]},"Emb3":{"item":"Embroidery wording (1000 stitches - 8000 stitches)","brand":"Own","tiers":[{"qty":9,"price":3.5},{"qty":99,"price":3},{"qty":199,"price":2.6}]},"Emb4":{"item":"Embroidery wording (8000 stitches above)","brand":"Own","tiers":[{"qty":9,"price":5},{"qty":99,"price":4.2},{"qty":199,"price":3.5}]},"Silk1":{"item":"Silkscreen 1 colour","brand":"Own","tiers":[{"qty":29,"price":4.2},{"qty":49,"price":3.5},{"qty":99,"price":2}]},"Silk2":{"item":"Silkscreen 2 colour","brand":"Own","tiers":[{"qty":29,"price":8.5},{"qty":49,"price":5},{"qty":99,"price":3.2}]},"Silk3":{"item":"Silkscreen 3 colour","brand":"Own","tiers":[{"qty":29,"price":12.5},{"qty":49,"price":7.5},{"qty":99,"price":4.5}]},"Silk4":{"item":"Silkscreen 4 colour","brand":"Own","tiers":[{"qty":29,"price":16.5},{"qty":49,"price":10.5},{"qty":99,"price":5.5}]},"HD1":{"item":"HD print (2cm-10cm)","brand":"Own","tiers":[{"qty":5,"price":8},{"qty":10,"price":5},{"qty":20,"price":4.5},{"qty":30,"price":4},{"qty":50,"price":3.5},{"qty":100,"price":2.8},{"qty":200,"price":2},{"qty":300,"price":1.8},{"qty":500,"price":1.4}]},"HD2":{"item":"HD print (11cm-13cm)","brand":"Own","tiers":[{"qty":5,"price":10},{"qty":10,"price":7},{"qty":20,"price":6},{"qty":30,"price":5},{"qty":50,"price":4.2},{"qty":100,"price":3.5},{"qty":200,"price":2.6},{"qty":300,"price":2.4},{"qty":500,"price":2.2},{"qty":1000,"price":1.8}]},"HD3":{"item":"HD print (19cm-23cm)","brand":"Own","tiers":[{"qty":5,"price":12},{"qty":10,"price":10},{"qty":20,"price":8},{"qty":30,"price":6.5},{"qty":50,"price":5.8},{"qty":100,"price":4.8},{"qty":200,"price":4},{"qty":300,"price":3.6},{"qty":500,"price":3.2},{"qty":1000,"price":2.9}]},"HDA4":{"item":"A4 Size","brand":"Own","tiers":[{"qty":1,"price":35},{"qty":2,"price":22},{"qty":3,"price":18},{"qty":4,"price":15},{"qty":5,"price":14},{"qty":6,"price":13},{"qty":7,"price":12},{"qty":8,"price":11},{"qty":9,"price":10}]},"HDA3":{"item":"A3 Size","brand":"Own","tiers":[{"qty":9,"price":16.5},{"qty":19,"price":14},{"qty":29,"price":11.5}]}};
+  let PRODUCTS = {"AP03":{"item":"Apron","brand":"Oren","agent_tiers":[],"internal_tiers":[],"category":"Aprons"},"AP04":{"item":"Apron","brand":"Oren","agent_tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10.0},{"qty":99,"price":9.5}],"internal_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":8.5},{"qty":99,"price":8.5}],"category":"Aprons"},"CI10":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"internal_tiers":[{"qty":29,"price":22.7},{"qty":49,"price":22.7},{"qty":99,"price":22.7}],"category":"Polo Shirts"},"CI11":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"internal_tiers":[{"qty":29,"price":22.7},{"qty":49,"price":22.7},{"qty":99,"price":22.7}],"category":"Polo Shirts"},"CI13":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":24.7},{"qty":49,"price":24.2},{"qty":99,"price":23.7}],"internal_tiers":[{"qty":29,"price":22.7},{"qty":49,"price":22.7},{"qty":99,"price":22.7}],"category":"Polo Shirts"},"CJ01":{"item":"Jackets (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":76.0},{"qty":49,"price":75.5},{"qty":99,"price":75.0}],"internal_tiers":[{"qty":29,"price":74.0},{"qty":49,"price":74.0},{"qty":99,"price":74.0}],"category":"Jackets"},"EJ02":{"item":"Jackets (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":48.6},{"qty":49,"price":48.1},{"qty":99,"price":47.6}],"internal_tiers":[{"qty":29,"price":46.6},{"qty":49,"price":46.6},{"qty":99,"price":46.6}],"category":"Jackets"},"EJ03":{"item":"Bomber Jackets (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":58.9},{"qty":49,"price":58.4},{"qty":99,"price":57.9}],"internal_tiers":[{"qty":29,"price":56.9},{"qty":49,"price":56.9},{"qty":99,"price":56.9}],"category":"Jackets"},"CT51":{"item":"Round Neck T-Shirts (S/S, 160gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":8.0},{"qty":99,"price":7.5}],"internal_tiers":[{"qty":29,"price":6.5},{"qty":49,"price":6.5},{"qty":99,"price":6.5}],"category":"T-Shirts"},"CT52 (K)":{"item":"Round Neck T-Shirts (S/S, 160gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"internal_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.7},{"qty":99,"price":6.7}],"category":"T-Shirts"},"CT54":{"item":"Round Neck T-Shirts (L/S, 160gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.9},{"qty":49,"price":12.4},{"qty":99,"price":11.9}],"internal_tiers":[{"qty":29,"price":10.9},{"qty":49,"price":10.9},{"qty":99,"price":10.9}],"category":"T-Shirts"},"CT55":{"item":"Round Neck Raglan T-Shirts (S/S, 160gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"internal_tiers":[{"qty":29,"price":9.4},{"qty":49,"price":9.4},{"qty":99,"price":9.4}],"category":"T-Shirts"},"CT56":{"item":"Round Neck Raglan T-Shirts (3/4 Sleeve, 160gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"internal_tiers":[{"qty":29,"price":13.2},{"qty":49,"price":13.2},{"qty":99,"price":13.2}],"category":"T-Shirts"},"CT60":{"item":"Round Neck T-Shirts (S/S, 180gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"internal_tiers":[{"qty":29,"price":9.4},{"qty":49,"price":9.4},{"qty":99,"price":9.4}],"category":"T-Shirts"},"CT71":{"item":"Round Neck T-Shirts (S/S, 200gsm)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"internal_tiers":[{"qty":29,"price":10.4},{"qty":49,"price":10.4},{"qty":99,"price":10.4}],"category":"T-Shirts"},"F116":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F117 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F118":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F119 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[],"internal_tiers":[],"category":"Shirts"},"F126":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F127 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F128":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F129 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F130":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F131 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F132":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F133 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F134":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F135 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F140":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F141 (F)":{"item":"Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F142":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F143 (F)":{"item":"Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F144":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F145 (F)":{"item":"Shirts (3/4 Sleeve)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"F146":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":41.9},{"qty":49,"price":41.4},{"qty":99,"price":40.9}],"internal_tiers":[{"qty":29,"price":39.9},{"qty":49,"price":39.9},{"qty":99,"price":39.9}],"category":"Shirts"},"F147 (F)":{"item":"Shirts (Muslimah, L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":45.7},{"qty":49,"price":45.2},{"qty":99,"price":44.7}],"internal_tiers":[{"qty":29,"price":43.7},{"qty":49,"price":43.7},{"qty":99,"price":43.7}],"category":"Muslimah Wear"},"F148":{"item":"Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":38.1},{"qty":49,"price":37.6},{"qty":99,"price":37.1}],"internal_tiers":[{"qty":29,"price":36.1},{"qty":49,"price":36.1},{"qty":99,"price":36.1}],"category":"Shirts"},"F149 (F)":{"item":"Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":39.1},{"qty":49,"price":38.6},{"qty":99,"price":38.1}],"internal_tiers":[{"qty":29,"price":37.1},{"qty":49,"price":37.1},{"qty":99,"price":37.1}],"category":"Shirts"},"HC01":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"internal_tiers":[{"qty":29,"price":13.8},{"qty":49,"price":13.8},{"qty":99,"price":13.8}],"category":"Polo Shirts"},"HC05 (F)":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"internal_tiers":[{"qty":29,"price":13.2},{"qty":49,"price":13.2},{"qty":99,"price":13.2}],"category":"Polo Shirts"},"HC09":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":19.0},{"qty":49,"price":18.5},{"qty":99,"price":18.0}],"internal_tiers":[{"qty":29,"price":17.0},{"qty":49,"price":17.0},{"qty":99,"price":17.0}],"category":"Polo Shirts"},"HC10":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"HC11":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"HC12":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.5},{"qty":49,"price":15.0},{"qty":99,"price":14.5}],"internal_tiers":[{"qty":29,"price":13.5},{"qty":49,"price":13.5},{"qty":99,"price":13.5}],"category":"Polo Shirts"},"HC15":{"item":"Polo Shirts (S/S with Hidden Pocket)","brand":"Oren","agent_tiers":[{"qty":29,"price":19.0},{"qty":49,"price":18.5},{"qty":99,"price":18.0}],"internal_tiers":[{"qty":29,"price":17.0},{"qty":49,"price":17.0},{"qty":99,"price":17.0}],"category":"Polo Shirts"},"HC16":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.7},{"qty":49,"price":16.2},{"qty":99,"price":15.7}],"internal_tiers":[{"qty":29,"price":14.7},{"qty":49,"price":14.7},{"qty":99,"price":14.7}],"category":"Polo Shirts"},"HC20":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"HC21":{"item":"Stand Collar Shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Shirts"},"HC22":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"HC23":{"item":"Stand Collar Shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Shirts"},"HC24":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.7},{"qty":49,"price":17.2},{"qty":99,"price":16.7}],"internal_tiers":[{"qty":29,"price":15.7},{"qty":49,"price":15.7},{"qty":99,"price":15.7}],"category":"Polo Shirts"},"HC25":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"HC26":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"HC27":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.0},{"qty":49,"price":19.5},{"qty":99,"price":19.0}],"internal_tiers":[{"qty":29,"price":18.0},{"qty":49,"price":18.0},{"qty":99,"price":18.0}],"category":"Polo Shirts"},"HC28":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.0},{"qty":49,"price":19.5},{"qty":99,"price":19.0}],"internal_tiers":[{"qty":29,"price":18.0},{"qty":49,"price":18.0},{"qty":99,"price":18.0}],"category":"Polo Shirts"},"HC29":{"item":"Polo shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.7},{"qty":49,"price":17.2},{"qty":99,"price":16.7}],"internal_tiers":[{"qty":29,"price":15.7},{"qty":49,"price":15.7},{"qty":99,"price":15.7}],"category":"Polo Shirts"},"HZ01":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":21.9},{"qty":49,"price":21.4},{"qty":99,"price":20.9}],"internal_tiers":[{"qty":29,"price":19.9},{"qty":49,"price":19.9},{"qty":99,"price":19.9}],"category":"Polo Shirts"},"JK02":{"item":"Jackets (L/S with Reflective Tape)","brand":"Oren","agent_tiers":[{"qty":29,"price":44.8},{"qty":49,"price":44.3},{"qty":99,"price":43.8}],"internal_tiers":[{"qty":29,"price":42.8},{"qty":49,"price":42.8},{"qty":99,"price":42.8}],"category":"Jackets"},"LP01":{"item":"Pants","brand":"Oren","agent_tiers":[{"qty":29,"price":44.8},{"qty":49,"price":44.3},{"qty":99,"price":43.8}],"internal_tiers":[{"qty":29,"price":42.8},{"qty":49,"price":42.8},{"qty":99,"price":42.8}],"category":"Pants"},"OT01":{"item":"Oversized Tee (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"internal_tiers":[{"qty":29,"price":18.9},{"qty":49,"price":18.9},{"qty":99,"price":18.9}],"category":"T-Shirts"},"OV02":{"item":"Coverall (with Reflective Tape)","brand":"Oren","agent_tiers":[{"qty":29,"price":64.7},{"qty":49,"price":64.2},{"qty":99,"price":63.7}],"internal_tiers":[{"qty":29,"price":62.7},{"qty":49,"price":62.7},{"qty":99,"price":62.7}],"category":"Jackets"},"QD04":{"item":"Round Neck T-Shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"T-Shirts"},"QD06":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"internal_tiers":[{"qty":29,"price":10.4},{"qty":49,"price":10.4},{"qty":99,"price":10.4}],"category":"Polo Shirts"},"QD15 (F)":{"item":"Round Neck T-Shirt (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"internal_tiers":[{"qty":29,"price":7.1},{"qty":49,"price":7.1},{"qty":99,"price":7.1}],"category":"T-Shirts"},"QD16 (F)":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"internal_tiers":[{"qty":29,"price":10.4},{"qty":49,"price":10.4},{"qty":99,"price":10.4}],"category":"Polo Shirts"},"QD18":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Shirts"},"QD21(F)":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Shirts"},"QD25":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"internal_tiers":[{"qty":29,"price":18.8},{"qty":49,"price":18.8},{"qty":99,"price":18.8}],"category":"Polo Shirts"},"QD30":{"item":"Zip Neck Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Shirts"},"QD31":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"internal_tiers":[{"qty":29,"price":18.8},{"qty":49,"price":18.8},{"qty":99,"price":18.8}],"category":"Polo Shirts"},"QD33":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"internal_tiers":[{"qty":29,"price":18.8},{"qty":49,"price":18.8},{"qty":99,"price":18.8}],"category":"Polo Shirts"},"QD34":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.8},{"qty":49,"price":20.3},{"qty":99,"price":19.8}],"internal_tiers":[{"qty":29,"price":18.8},{"qty":49,"price":18.8},{"qty":99,"price":18.8}],"category":"Polo Shirts"},"QD36":{"item":"Round Neck Raglan T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"internal_tiers":[{"qty":29,"price":10.4},{"qty":49,"price":10.4},{"qty":99,"price":10.4}],"category":"T-Shirts"},"QD37":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":19.6},{"qty":49,"price":19.1},{"qty":99,"price":18.6}],"internal_tiers":[{"qty":29,"price":17.6},{"qty":49,"price":17.6},{"qty":99,"price":17.6}],"category":"Polo Shirts"},"QD43":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"internal_tiers":[{"qty":29,"price":12.8},{"qty":49,"price":12.8},{"qty":99,"price":12.8}],"category":"T-Shirts"},"QD46":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"internal_tiers":[{"qty":29,"price":11.3},{"qty":49,"price":11.3},{"qty":99,"price":11.3}],"category":"T-Shirts"},"QD47":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Polo Shirts"},"QD48":{"item":"Round Neck Raglan T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"internal_tiers":[{"qty":29,"price":11.3},{"qty":49,"price":11.3},{"qty":99,"price":11.3}],"category":"T-Shirts"},"QD49":{"item":"Round Neck Raglan T-Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":13.8},{"qty":99,"price":13.3}],"internal_tiers":[{"qty":29,"price":12.3},{"qty":49,"price":12.3},{"qty":99,"price":12.3}],"category":"T-Shirts"},"QD50":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10.0},{"qty":99,"price":9.5}],"internal_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":8.5},{"qty":99,"price":8.5}],"category":"T-Shirts"},"QD51":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"internal_tiers":[{"qty":29,"price":9.4},{"qty":49,"price":9.4},{"qty":99,"price":9.4}],"category":"T-Shirts"},"QD52":{"item":"V-Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":10.5},{"qty":49,"price":10.0},{"qty":99,"price":9.5}],"internal_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":8.5},{"qty":99,"price":8.5}],"category":"T-Shirts"},"QD53":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD54":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.4},{"qty":49,"price":11.9},{"qty":99,"price":11.4}],"internal_tiers":[{"qty":29,"price":10.4},{"qty":49,"price":10.4},{"qty":99,"price":10.4}],"category":"T-Shirts"},"QD55":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"internal_tiers":[{"qty":29,"price":9.4},{"qty":49,"price":9.4},{"qty":99,"price":9.4}],"category":"T-Shirts"},"QD56":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"internal_tiers":[{"qty":29,"price":7.1},{"qty":49,"price":7.1},{"qty":99,"price":7.1}],"category":"T-Shirts"},"QD57":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":12.9},{"qty":49,"price":12.4},{"qty":99,"price":11.9}],"internal_tiers":[{"qty":29,"price":10.9},{"qty":49,"price":10.9},{"qty":99,"price":10.9}],"category":"T-Shirts"},"QD58":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"internal_tiers":[{"qty":29,"price":13.8},{"qty":49,"price":13.8},{"qty":99,"price":13.8}],"category":"Polo Shirts"},"QD59":{"item":"Round Neck T-Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"internal_tiers":[{"qty":29,"price":12.8},{"qty":49,"price":12.8},{"qty":99,"price":12.8}],"category":"T-Shirts"},"QD60":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"internal_tiers":[{"qty":29,"price":13.8},{"qty":49,"price":13.8},{"qty":99,"price":13.8}],"category":"Polo Shirts"},"QD61":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":15.8},{"qty":49,"price":15.3},{"qty":99,"price":14.8}],"internal_tiers":[{"qty":29,"price":13.8},{"qty":49,"price":13.8},{"qty":99,"price":13.8}],"category":"Polo Shirts"},"QD62":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":13.3},{"qty":49,"price":12.8},{"qty":99,"price":12.3}],"internal_tiers":[{"qty":29,"price":11.3},{"qty":49,"price":11.3},{"qty":99,"price":11.3}],"category":"T-Shirts"},"QD63":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Polo Shirts"},"QD64":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD65":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Polo Shirts"},"QD66":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"internal_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.7},{"qty":99,"price":6.7}],"category":"T-Shirts"},"QD67":{"item":"Polo Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"internal_tiers":[{"qty":29,"price":14.2},{"qty":49,"price":14.2},{"qty":99,"price":14.2}],"category":"Polo Shirts"},"QD68 (K)":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":9.1},{"qty":49,"price":8.6},{"qty":99,"price":8.1}],"internal_tiers":[{"qty":29,"price":7.1},{"qty":49,"price":7.1},{"qty":99,"price":7.1}],"category":"T-Shirts"},"QD69":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":19.0},{"qty":49,"price":18.5},{"qty":99,"price":18.0}],"internal_tiers":[{"qty":29,"price":17.0},{"qty":49,"price":17.0},{"qty":99,"price":17.0}],"category":"Polo Shirts"},"QD70":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"internal_tiers":[{"qty":29,"price":12.8},{"qty":49,"price":12.8},{"qty":99,"price":12.8}],"category":"T-Shirts"},"QD71":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD72":{"item":"Round Neck T-Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"internal_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.7},{"qty":99,"price":6.7}],"category":"T-Shirts"},"QD73":{"item":"Round Neck Tank Top (Sleeveless)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.7},{"qty":49,"price":8.2},{"qty":99,"price":7.7}],"internal_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.7},{"qty":99,"price":6.7}],"category":"Vests"},"QD74":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"internal_tiers":[{"qty":29,"price":14.2},{"qty":49,"price":14.2},{"qty":99,"price":14.2}],"category":"Polo Shirts"},"QD75":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"internal_tiers":[{"qty":29,"price":12.8},{"qty":49,"price":12.8},{"qty":99,"price":12.8}],"category":"T-Shirts"},"QD76":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD77":{"item":"Round Neck T-Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":14.8},{"qty":49,"price":14.3},{"qty":99,"price":13.8}],"internal_tiers":[{"qty":29,"price":12.8},{"qty":49,"price":12.8},{"qty":99,"price":12.8}],"category":"T-Shirts"},"QD78":{"item":"Polo Shirts (S/S, Sublimation)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD79":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.6},{"qty":49,"price":18.1},{"qty":99,"price":17.6}],"internal_tiers":[{"qty":29,"price":16.6},{"qty":49,"price":16.6},{"qty":99,"price":16.6}],"category":"Polo Shirts"},"QD80":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.3},{"qty":49,"price":15.8},{"qty":99,"price":15.3}],"internal_tiers":[{"qty":29,"price":14.3},{"qty":49,"price":14.3},{"qty":99,"price":14.3}],"category":"Polo Shirts"},"SJ01":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":16.2},{"qty":49,"price":15.7},{"qty":99,"price":15.2}],"internal_tiers":[{"qty":29,"price":14.2},{"qty":49,"price":14.2},{"qty":99,"price":14.2}],"category":"Polo Shirts"},"SJ03":{"item":"Polo Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.1},{"qty":49,"price":17.6},{"qty":99,"price":17.1}],"internal_tiers":[{"qty":29,"price":16.1},{"qty":49,"price":16.1},{"qty":99,"price":16.1}],"category":"Polo Shirts"},"SJ04":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"SJ05":{"item":"Polo Shirts (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":19.0},{"qty":49,"price":18.5},{"qty":99,"price":18.0}],"internal_tiers":[{"qty":29,"price":17.0},{"qty":49,"price":17.0},{"qty":99,"price":17.0}],"category":"Polo Shirts"},"SJ08":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"SJ09":{"item":"Polo Shirts (S/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":49,"price":16.6},{"qty":99,"price":16.1}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":49,"price":15.1},{"qty":99,"price":15.1}],"category":"Polo Shirts"},"SK01":{"item":"Muslimah (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"internal_tiers":[{"qty":29,"price":18.9},{"qty":49,"price":18.9},{"qty":99,"price":18.9}],"category":"Muslimah Wear"},"SK02":{"item":"Muslimah (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"internal_tiers":[{"qty":29,"price":18.9},{"qty":49,"price":18.9},{"qty":99,"price":18.9}],"category":"Muslimah Wear"},"SK03":{"item":"Muslimah (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":18.1},{"qty":49,"price":17.6},{"qty":99,"price":17.1}],"internal_tiers":[{"qty":29,"price":16.1},{"qty":49,"price":16.1},{"qty":99,"price":16.1}],"category":"Muslimah Wear"},"SK04":{"item":"Muslimah (L/S)","brand":"Oren","agent_tiers":[{"qty":29,"price":20.9},{"qty":49,"price":20.4},{"qty":99,"price":19.9}],"internal_tiers":[{"qty":29,"price":18.9},{"qty":49,"price":18.9},{"qty":99,"price":18.9}],"category":"Muslimah Wear"},"SK05":{"item":"Muslimah (L/S) , Quick Dry","brand":"Oren","agent_tiers":[{"qty":29,"price":15.2},{"qty":49,"price":14.7},{"qty":99,"price":14.2}],"internal_tiers":[{"qty":29,"price":13.2},{"qty":49,"price":13.2},{"qty":99,"price":13.2}],"category":"Muslimah Wear"},"TT01":{"item":"Premium Polo Shirt (S/S)","brand":"Oren","agent_tiers":[],"internal_tiers":[],"category":"Polo Shirts"},"TT02":{"item":"Premium Polo Shirt (S/S)","brand":"Oren","agent_tiers":[],"internal_tiers":[],"category":"Polo Shirts"},"TW01":{"item":"Towelling (Hand Towel)","brand":"Oren","agent_tiers":[{"qty":29,"price":5.3},{"qty":49,"price":4.8},{"qty":99,"price":4.3}],"internal_tiers":[{"qty":29,"price":3.3},{"qty":49,"price":3.3},{"qty":99,"price":3.3}],"category":"Towels"},"TW03":{"item":"Towelling (Bath Towel) [0300/0304/0307/0310/0314/0325]","brand":"Oren","agent_tiers":[{"qty":29,"price":17.1},{"qty":29,"price":20.0},{"qty":49,"price":16.6},{"qty":49,"price":19.5},{"qty":99,"price":16.1},{"qty":99,"price":19.0}],"internal_tiers":[{"qty":29,"price":15.1},{"qty":29,"price":18.0},{"qty":49,"price":15.1},{"qty":49,"price":18.0},{"qty":99,"price":15.1},{"qty":99,"price":18.0}],"category":"Towels"},"TW06":{"item":"Towelling (Bath Towel) [0600/0604/0607/0610/0614/0625]","brand":"Oren","agent_tiers":[{"qty":29,"price":21.0},{"qty":29,"price":23.8},{"qty":49,"price":20.5},{"qty":49,"price":23.3},{"qty":99,"price":20.0},{"qty":99,"price":22.8}],"internal_tiers":[{"qty":29,"price":19.0},{"qty":29,"price":21.8},{"qty":49,"price":19.0},{"qty":49,"price":21.8},{"qty":99,"price":19.0},{"qty":99,"price":21.8}],"category":"Towels"},"TW07":{"item":"Towelling (Hand Towel)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":49,"price":6.6},{"qty":99,"price":6.6}],"category":"Towels"},"TW08":{"item":"Towelling (Bath Towel)","brand":"Oren","agent_tiers":[{"qty":29,"price":11.4},{"qty":49,"price":10.9},{"qty":99,"price":10.4}],"internal_tiers":[{"qty":29,"price":9.4},{"qty":49,"price":9.4},{"qty":99,"price":9.4}],"category":"Towels"},"TW09":{"item":"Towelling (Hand Towel)","brand":"Oren","agent_tiers":[{"qty":29,"price":4.2},{"qty":49,"price":3.7},{"qty":99,"price":3.2}],"internal_tiers":[{"qty":29,"price":2.2},{"qty":49,"price":2.2},{"qty":99,"price":2.2}],"category":"Towels"},"TW10":{"item":"Towelling (Sport Hand Towel)","brand":"Oren","agent_tiers":[{"qty":29,"price":10.1},{"qty":49,"price":9.6},{"qty":99,"price":9.1}],"internal_tiers":[{"qty":29,"price":8.1},{"qty":49,"price":8.1},{"qty":99,"price":8.1}],"category":"Towels"},"VJ06":{"item":"Vest Jacket (Sleeveless)","brand":"Oren","agent_tiers":[{"qty":29,"price":25.8},{"qty":49,"price":25.3},{"qty":99,"price":24.8}],"internal_tiers":[{"qty":29,"price":23.8},{"qty":49,"price":23.8},{"qty":99,"price":23.8}],"category":"Vests"},"VT0203":{"item":"Unisex Sleeveless Safety Vest (with reflective tape)","brand":"Oren","agent_tiers":[{"qty":29,"price":9.6},{"qty":49,"price":9.1},{"qty":99,"price":8.6}],"internal_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.6},{"qty":99,"price":7.6}],"category":"Vests"},"VT03":{"item":"Unisex Sleeveless Utility Vest","brand":"Oren","agent_tiers":[{"qty":29,"price":27.7},{"qty":49,"price":27.2},{"qty":99,"price":26.7}],"internal_tiers":[{"qty":29,"price":25.7},{"qty":49,"price":25.7},{"qty":99,"price":25.7}],"category":"Vests"},"WB04":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":40.0},{"qty":49,"price":39.5},{"qty":99,"price":39.0}],"internal_tiers":[{"qty":29,"price":38.0},{"qty":49,"price":38.0},{"qty":99,"price":38.0}],"category":"Windbreakers"},"WB05":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":40.0},{"qty":49,"price":39.5},{"qty":99,"price":39.0}],"internal_tiers":[{"qty":29,"price":38.0},{"qty":49,"price":38.0},{"qty":99,"price":38.0}],"category":"Windbreakers"},"WB06":{"item":"Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":33.4},{"qty":49,"price":32.9},{"qty":99,"price":32.4}],"internal_tiers":[{"qty":29,"price":31.4},{"qty":49,"price":31.4},{"qty":99,"price":31.4}],"category":"Windbreakers"},"WR01":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":50.0},{"qty":49,"price":49.5},{"qty":99,"price":49.0}],"internal_tiers":[{"qty":29,"price":48.0},{"qty":49,"price":48.0},{"qty":99,"price":48.0}],"category":"Windbreakers"},"WR03":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":52.4},{"qty":49,"price":51.9},{"qty":99,"price":51.4}],"internal_tiers":[{"qty":29,"price":50.4},{"qty":49,"price":50.4},{"qty":99,"price":50.4}],"category":"Windbreakers"},"WR04":{"item":"Reversible Windbreakers (L/S Full Zip)","brand":"Oren","agent_tiers":[{"qty":29,"price":52.4},{"qty":49,"price":51.9},{"qty":99,"price":51.4}],"internal_tiers":[{"qty":29,"price":50.4},{"qty":49,"price":50.4},{"qty":99,"price":50.4}],"category":"Windbreakers"},"CP01":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"Caps"},"CP03":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"Caps"},"CP04":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"Caps"},"CP05":{"item":"Baseball Caps (Polyster)","brand":"Oren","agent_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.2},{"qty":99,"price":5.7}],"internal_tiers":[{"qty":29,"price":4.7},{"qty":49,"price":4.7},{"qty":99,"price":4.7}],"category":"Caps"},"CP09":{"item":"Baseball Caps (Polyster)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.0},{"qty":49,"price":7.5},{"qty":99,"price":7.0}],"internal_tiers":[{"qty":29,"price":6.0},{"qty":49,"price":6.0},{"qty":99,"price":6.0}],"category":"Caps"},"CP12":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":49,"price":6.6},{"qty":99,"price":6.6}],"category":"Caps"},"CP13":{"item":"Baseball Caps (Polyster)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.0},{"qty":49,"price":7.5},{"qty":99,"price":7.0}],"internal_tiers":[{"qty":29,"price":6.0},{"qty":49,"price":6.0},{"qty":99,"price":6.0}],"category":"Caps"},"CP14":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":49,"price":6.6},{"qty":99,"price":6.6}],"category":"Caps"},"CP17":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":49,"price":6.6},{"qty":99,"price":6.6}],"category":"Caps"},"CP18":{"item":"Baseball Caps (Polyster)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.0},{"qty":49,"price":7.5},{"qty":99,"price":7.0}],"internal_tiers":[{"qty":29,"price":6.0},{"qty":49,"price":6.0},{"qty":99,"price":6.0}],"category":"Caps"},"CP19":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":49,"price":8.1},{"qty":99,"price":7.6}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":49,"price":6.6},{"qty":99,"price":6.6}],"category":"Caps"},"CP21":{"item":"Military Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":8.0},{"qty":49,"price":7.5},{"qty":99,"price":7.0}],"internal_tiers":[{"qty":29,"price":6.0},{"qty":49,"price":6.0},{"qty":99,"price":6.0}],"category":"Caps"},"CP23":{"item":"Snapback Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"Caps"},"CP24 (K)":{"item":"Baseball Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.2},{"qty":49,"price":6.7},{"qty":99,"price":6.2}],"internal_tiers":[{"qty":29,"price":5.2},{"qty":49,"price":5.2},{"qty":99,"price":5.2}],"category":"Caps"},"CP25":{"item":"Snapback Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":7.6},{"qty":49,"price":7.1},{"qty":99,"price":6.6}],"internal_tiers":[{"qty":29,"price":5.6},{"qty":49,"price":5.6},{"qty":99,"price":5.6}],"category":"Caps"},"CP26":{"item":"Truckers Caps (Cotton)","brand":"Oren","agent_tiers":[{"qty":29,"price":6.7},{"qty":49,"price":6.2},{"qty":99,"price":5.7}],"internal_tiers":[{"qty":29,"price":4.7},{"qty":49,"price":4.7},{"qty":99,"price":4.7}],"category":"Caps"},"FH01":{"item":"Fisherman Hat (Cotton) [0101/0103/0102]","brand":"Oren","agent_tiers":[{"qty":29,"price":8.6},{"qty":29,"price":9.5},{"qty":49,"price":8.1},{"qty":49,"price":9.0},{"qty":99,"price":7.6},{"qty":99,"price":8.5}],"internal_tiers":[{"qty":29,"price":6.6},{"qty":29,"price":7.5},{"qty":49,"price":6.6},{"qty":49,"price":7.5},{"qty":99,"price":6.6},{"qty":99,"price":7.5}],"category":"Hats"}};
+
+  let ADDONS = {"Emb1":{"item":"Embroidery logo (1000 stitches - 8000 stitches)","brand":"Own","agent_tiers":[{"qty":9,"price":6.0},{"qty":99,"price":3.0},{"qty":199,"price":2.5}],"internal_tiers":[{"qty":9,"price":6.0},{"qty":99,"price":3.0},{"qty":199,"price":2.5}]},"Emb2":{"item":"Embroidery logo (8000 stitches above)","brand":"Own","agent_tiers":[{"qty":9,"price":7.0},{"qty":99,"price":3.8},{"qty":199,"price":3.0}],"internal_tiers":[{"qty":9,"price":7.0},{"qty":99,"price":3.8},{"qty":199,"price":3.0}]},"Emb3":{"item":"Embroidery wording (1000 stitches - 8000 stitches)","brand":"Own","agent_tiers":[{"qty":9,"price":3.5},{"qty":99,"price":3.0},{"qty":199,"price":2.6}],"internal_tiers":[{"qty":9,"price":3.5},{"qty":99,"price":3.0},{"qty":199,"price":2.6}]},"Emb4":{"item":"Embroidery wording (8000 stitches above)","brand":"Own","agent_tiers":[{"qty":9,"price":5.0},{"qty":99,"price":4.2},{"qty":199,"price":3.5}],"internal_tiers":[{"qty":9,"price":5.0},{"qty":99,"price":4.2},{"qty":199,"price":3.5}]},"Silk1":{"item":"Silkscreen 1 colour","brand":"Own","agent_tiers":[{"qty":29,"price":4.2},{"qty":49,"price":3.5},{"qty":99,"price":2.0}],"internal_tiers":[{"qty":29,"price":4.2},{"qty":49,"price":3.5},{"qty":99,"price":2.0}]},"Silk2":{"item":"Silkscreen 2 colour","brand":"Own","agent_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":5.0},{"qty":99,"price":3.2}],"internal_tiers":[{"qty":29,"price":8.5},{"qty":49,"price":5.0},{"qty":99,"price":3.2}]},"Silk3":{"item":"Silkscreen 3 colour","brand":"Own","agent_tiers":[{"qty":29,"price":12.5},{"qty":49,"price":7.5},{"qty":99,"price":4.5}],"internal_tiers":[{"qty":29,"price":12.5},{"qty":49,"price":7.5},{"qty":99,"price":4.5}]},"Silk4":{"item":"Silkscreen 4 colour","brand":"Own","agent_tiers":[{"qty":29,"price":16.5},{"qty":49,"price":10.5},{"qty":99,"price":5.5}],"internal_tiers":[{"qty":29,"price":16.5},{"qty":49,"price":10.5},{"qty":99,"price":5.5}]},"HD1":{"item":"HD print (2cm-10cm)","brand":"Own","agent_tiers":[{"qty":5,"price":8.0},{"qty":10,"price":5.0},{"qty":20,"price":4.5},{"qty":30,"price":4.0},{"qty":50,"price":3.5},{"qty":100,"price":2.8},{"qty":200,"price":2.0},{"qty":300,"price":1.8},{"qty":500,"price":1.4}],"internal_tiers":[{"qty":5,"price":8.0},{"qty":10,"price":5.0},{"qty":20,"price":4.5},{"qty":30,"price":4.0},{"qty":50,"price":3.5},{"qty":100,"price":2.8},{"qty":200,"price":2.0},{"qty":300,"price":1.8},{"qty":500,"price":1.4}]},"HD2":{"item":"HD print (11cm-13cm)","brand":"Own","agent_tiers":[{"qty":5,"price":10.0},{"qty":10,"price":7.0},{"qty":20,"price":6.0},{"qty":30,"price":5.0},{"qty":50,"price":4.2},{"qty":100,"price":3.5},{"qty":200,"price":2.6},{"qty":300,"price":2.4},{"qty":500,"price":2.2},{"qty":1000,"price":1.8}],"internal_tiers":[{"qty":5,"price":10.0},{"qty":10,"price":7.0},{"qty":20,"price":6.0},{"qty":30,"price":5.0},{"qty":50,"price":4.2},{"qty":100,"price":3.5},{"qty":200,"price":2.6},{"qty":300,"price":2.4},{"qty":500,"price":2.2},{"qty":1000,"price":1.8}]},"HD3":{"item":"HD print (19cm-23cm)","brand":"Own","agent_tiers":[{"qty":5,"price":12.0},{"qty":10,"price":10.0},{"qty":20,"price":8.0},{"qty":30,"price":6.5},{"qty":50,"price":5.8},{"qty":100,"price":4.8},{"qty":200,"price":4.0},{"qty":300,"price":3.6},{"qty":500,"price":3.2},{"qty":1000,"price":2.9}],"internal_tiers":[{"qty":5,"price":12.0},{"qty":10,"price":10.0},{"qty":20,"price":8.0},{"qty":30,"price":6.5},{"qty":50,"price":5.8},{"qty":100,"price":4.8},{"qty":200,"price":4.0},{"qty":300,"price":3.6},{"qty":500,"price":3.2},{"qty":1000,"price":2.9}]},"HDA4":{"item":"A4 Size","brand":"Own","agent_tiers":[{"qty":1,"price":35.0},{"qty":2,"price":22.0},{"qty":3,"price":18.0},{"qty":4,"price":15.0},{"qty":5,"price":14.0},{"qty":6,"price":13.0},{"qty":7,"price":12.0},{"qty":8,"price":11.0},{"qty":9,"price":10.0}],"internal_tiers":[{"qty":1,"price":35.0},{"qty":2,"price":22.0},{"qty":3,"price":18.0},{"qty":4,"price":15.0},{"qty":5,"price":14.0},{"qty":6,"price":13.0},{"qty":7,"price":12.0},{"qty":8,"price":11.0},{"qty":9,"price":10.0}]},"HDA3":{"item":"A3 Size","brand":"Own","agent_tiers":[{"qty":9,"price":16.5},{"qty":19,"price":14.0},{"qty":29,"price":11.5}],"internal_tiers":[{"qty":9,"price":16.5},{"qty":19,"price":14.0},{"qty":29,"price":11.5}]}};
 
   // ---- State ----
   let quote = []; // [{id, productCode, qty, addonCodes: [..]}]
@@ -1698,14 +2084,39 @@
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => 'RM ' + (n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // ---- Role & tier selection ----
+  // Role: 'agent' (default) or 'internal' (FOSB)
+  // Agent uses agent_tiers (price per unit / what agents pay)
+  // Internal uses internal_tiers (cost / FOSB's actual cost)
+  let role = 'agent';
+  try {
+    const saved = localStorage.getItem('fosb_role');
+    if (saved === 'agent' || saved === 'internal') role = saved;
+  } catch (e) {}
+
+  // Return the active tier set for a product/addon based on current role
+  // Falls back to agent_tiers if the requested set doesn't exist (e.g. add-ons)
+  function tiersFor(p) {
+    if (!p) return [];
+    if (role === 'internal' && p.internal_tiers && p.internal_tiers.length) {
+      return p.internal_tiers;
+    }
+    if (p.agent_tiers && p.agent_tiers.length) {
+      return p.agent_tiers;
+    }
+    // Backward compat: if data still uses old 'tiers' field
+    return p.tiers || [];
+  }
+
   // ---- Price lookup ----
   function lookupPrice(catalog, code, qty) {
     const p = catalog[code];
     if (!p) return null;
-    if (!p.tiers || p.tiers.length === 0) return { nostock: true, product: p };
+    const tiers = tiersFor(p);
+    if (!tiers || tiers.length === 0) return { nostock: true, product: p };
     if (!qty || qty <= 0) return { product: p, price: 0 };
-    const tier = p.tiers.find(t => t.qty >= qty);
-    const usedTier = tier || p.tiers[p.tiers.length - 1];
+    const tier = tiers.find(t => t.qty >= qty);
+    const usedTier = tier || tiers[tiers.length - 1];
     return { product: p, price: usedTier.price };
   }
 
@@ -1781,17 +2192,20 @@
 
     // Base product
     const prod = PRODUCTS[line.productCode];
-    if (prod && prod.tiers && prod.tiers.length && overrides.item == null) {
-      const u = getComponentUpsell(prod.tiers, line.qty);
-      if (u) {
-        results.push({
-          kind: 'item',
-          code: line.productCode,
-          name: prod.item,
-          ...u,
-          savingsTotal: u.savings * line.qty,       // if override applied at current qty
-          bumpDiff: (u.nextPrice * u.bumpQty) - (u.currentPrice * line.qty), // cost diff of bumping
-        });
+    if (prod) {
+      const prodTiers = tiersFor(prod);
+      if (prodTiers && prodTiers.length && overrides.item == null) {
+        const u = getComponentUpsell(prodTiers, line.qty);
+        if (u) {
+          results.push({
+            kind: 'item',
+            code: line.productCode,
+            name: prod.item,
+            ...u,
+            savingsTotal: u.savings * line.qty,       // if override applied at current qty
+            bumpDiff: (u.nextPrice * u.bumpQty) - (u.currentPrice * line.qty), // cost diff of bumping
+          });
+        }
       }
     }
 
@@ -1800,8 +2214,10 @@
     line.addonCodes.forEach(code => {
       if (overrides.addons && overrides.addons[code] != null) return;  // already overridden
       const a = ADDONS[code];
-      if (!a || !a.tiers || a.tiers.length === 0) return;
-      const u = getComponentUpsell(a.tiers, line.qty);
+      if (!a) return;
+      const addonTiers = tiersFor(a);
+      if (!addonTiers || addonTiers.length === 0) return;
+      const u = getComponentUpsell(addonTiers, line.qty);
       if (u) {
         const count = Math.max(1, addonCounts[code] || 1);
         results.push({
@@ -1843,6 +2259,7 @@
         breakdownRows +=
           '<div class="bd-row' + (calc.prod.overridden ? ' overridden' : '') + '">' +
             '<div class="bd-comp">' +
+              '<span class="bd-icon">' + categoryIcon(prod.category, 24) + '</span>' +
               '<span class="bd-tag base">item</span>' +
               '<span class="bd-name">' + escapeHtml(prod.item) + itemOverrideBadge + '</span>' +
               '<span class="bd-code">' + escapeHtml(line.productCode) + '</span>' +
@@ -1881,6 +2298,7 @@
           breakdownRows +=
             '<div class="bd-row addon-row' + (a.overridden ? ' overridden' : '') + '">' +
               '<div class="bd-comp">' +
+                '<span class="bd-icon">' + addonIcon(20) + '</span>' +
                 '<span class="bd-tag addon">add-on</span>' +
                 '<span class="bd-name">' + escapeHtml(a.product.item) + countDisplay + ovBadge + '</span>' +
                 '<span class="bd-code">' + escapeHtml(a.code) + '</span>' +
@@ -1955,7 +2373,7 @@
           '<div class="quote-item-head">' +
             '<div class="num">' + String(i+1).padStart(2,'0') + '</div>' +
             '<div class="head-title">' +
-              '<div class="name">' + escapeHtml(prod.item) + (calc.addonDetails.length ? ' <span class="plus">+ ' + calc.addonDetails.length + ' add-on' + (calc.addonDetails.length === 1 ? '' : 's') + '</span>' : '') + '</div>' +
+              '<div class="name"><span class="name-icon">' + categoryIcon(prod.category, 18) + '</span>' + escapeHtml(prod.item) + (calc.addonDetails.length ? ' <span class="plus">+ ' + calc.addonDetails.length + ' add-on' + (calc.addonDetails.length === 1 ? '' : 's') + '</span>' : '') + '</div>' +
               '<div class="qty-line">' +
                 '<span class="qty-label">Quantity:</span>' +
                 '<div class="qty-edit">' +
@@ -2043,6 +2461,37 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---- Category icons ----
+  // Inline SVG paths for each category. Used in product picker AND quote breakdown.
+  const CATEGORY_ICONS = {
+    "Caps":          '<path d="M3 14a9 7 0 0 1 18 0"/><path d="M3 14h18l-2 3H5z"/><path d="M12 7v3"/>',
+    "Hats":          '<ellipse cx="12" cy="17" rx="9" ry="2"/><path d="M5 17V11a7 7 0 0 1 14 0v6"/>',
+    "T-Shirts":      '<path d="M8 3 L4 5 L2 8 L4 11 L7 9 L7 21 L17 21 L17 9 L20 11 L22 8 L20 5 L16 3 L14 5 Q12 7 10 5 Z"/>',
+    "Polo Shirts":   '<path d="M8 3 L4 5 L2 8 L4 11 L7 9 L7 21 L17 21 L17 9 L20 11 L22 8 L20 5 L16 3 L14 4 L12 6 L10 4 Z"/><path d="M10 4 L12 9 L14 4"/><line x1="12" y1="9" x2="12" y2="13"/>',
+    "Shirts":        '<path d="M8 3 L4 5 L2 8 L4 11 L7 9 L7 21 L17 21 L17 9 L20 11 L22 8 L20 5 L16 3 L14 4 Q12 6 10 4 Z"/><line x1="12" y1="5" x2="12" y2="21"/><circle cx="12" cy="11" r="0.6" fill="currentColor"/><circle cx="12" cy="15" r="0.6" fill="currentColor"/>',
+    "Jackets":       '<path d="M6 4 L3 6 L3 21 L11 21 L11 7 L9 4 Z"/><path d="M18 4 L21 6 L21 21 L13 21 L13 7 L15 4 Z"/><line x1="12" y1="4" x2="12" y2="21"/>',
+    "Windbreakers":  '<path d="M6 4 L3 6 L3 21 L11 21 L11 7 L9 4 Z"/><path d="M18 4 L21 6 L21 21 L13 21 L13 7 L15 4 Z"/><line x1="12" y1="4" x2="12" y2="21"/><path d="M12 4 L12 7 L9 8 M12 7 L15 8"/>',
+    "Vests":         '<path d="M7 4 L5 6 L5 21 L10 21 L10 7 L12 4 L14 7 L14 21 L19 21 L19 6 L17 4 L14 5 L12 6 L10 5 Z"/>',
+    "Muslimah Wear": '<path d="M12 3 a4 3 0 0 0 -4 3 c0 2 1 3 1 5 L6 13 L6 21 L18 21 L18 13 L15 11 c0 -2 1 -3 1 -5 a4 3 0 0 0 -4 -3 z"/><path d="M9 13 Q12 14.5 15 13"/>',
+    "Towels":        '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 7 L20 7"/><path d="M7 11 L17 11 M7 14 L17 14 M7 17 L17 17"/>',
+    "Aprons":        '<path d="M9 3 L6 4 L7 9 L8 9 L7 11 L7 20 L17 20 L17 11 L16 9 L17 9 L18 4 L15 3"/><path d="M9 3 Q12 5 15 3"/><circle cx="12" cy="14" r="0.8"/>',
+    "Pants":         '<path d="M7 3 L17 3 L16 11 L14 20 L11 20 L12 12 L10 20 L7 20 L5 11 Z"/><line x1="7" y1="3" x2="17" y2="3"/>',
+  };
+
+  // Add-on icons (used for non-product add-on rows)
+  const ADDON_ICON = '<path d="M4 7l8-4 8 4-8 4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/>'; // stacked layers
+
+  // Render an inline SVG icon for a category. size in px.
+  function categoryIcon(category, size) {
+    size = size || 36;
+    const paths = CATEGORY_ICONS[category] || CATEGORY_ICONS['T-Shirts']; // fallback
+    return '<svg class="cat-icon" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+  }
+  function addonIcon(size) {
+    size = size || 28;
+    return '<svg class="cat-icon" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ADDON_ICON + '</svg>';
   }
 
   // ---- Quote item handlers ----
@@ -2289,6 +2738,7 @@
     modalSearch = '';
     $('search-input').value = '';
     $('qty-input').value = modalSelected.qty;
+    updateModalRoleLabel(); // Always show current role inside modal
     renderCategories();
     renderProductList();
     renderAddons();
@@ -2317,9 +2767,8 @@
     modalSearch = '';
   }
 
-  // Expose openModal globally so the inline onclick fallback works
-  // (defensive: in case addEventListener fails or DOM timing is off on iOS Safari)
-  window.openAddProduct = () => openModal(null);
+  // Expose the full handler — picked up by the inline onclick fallback
+  window._realOpenAddProduct = () => openModal(null);
 
   $('add-product-btn').addEventListener('click', () => openModal(null));
   $('modal-close').addEventListener('click', closeModal);
@@ -2378,14 +2827,16 @@
     }
 
     filtered.forEach(([code, p]) => {
-      const fromPrice = p.tiers && p.tiers.length ? p.tiers[p.tiers.length - 1].price : null;
+      const tiers = tiersFor(p);
+      const fromPrice = tiers && tiers.length ? tiers[0].price : null;
       const opt = document.createElement('div');
       opt.className = 'product-option' + (modalSelected.productCode === code ? ' selected' : '');
       opt.dataset.code = code;
       opt.innerHTML =
         '<div class="left">' +
-          '<div class="code">' + escapeHtml(code) + '</div>' +
-          '<div>' +
+          '<div class="product-thumb">' + categoryIcon(p.category, 36) + '</div>' +
+          '<div class="product-meta">' +
+            '<div class="code">' + escapeHtml(code) + '</div>' +
             '<div class="name">' + escapeHtml(p.item) + '</div>' +
             '<div class="brand-tag">' + escapeHtml(p.brand) + '</div>' +
           '</div>' +
@@ -2424,7 +2875,8 @@
     const wrap = $('addon-list');
     wrap.innerHTML = '';
     Object.entries(ADDONS).forEach(([code, a]) => {
-      const fromPrice = a.tiers && a.tiers.length ? a.tiers[a.tiers.length - 1].price : null;
+      const addonTiers = tiersFor(a);
+      const fromPrice = addonTiers && addonTiers.length ? addonTiers[0].price : null;
       const checked = modalSelected.addonCodes.includes(code);
       const card = document.createElement('label');
       card.className = 'addon-card-opt' + (checked ? ' selected' : '');
@@ -2618,8 +3070,402 @@
   }
 
   // ---- Init ----
-  $('ts').textContent = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · BUILD-7';
+  $('ts').textContent = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // ---- Role switch UI ----
+  function updateRoleUI() {
+    document.querySelectorAll('.role-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.role === role);
+    });
+  }
+
+  function updateModalRoleLabel() {
+    const tag = $('modal-role-tag');
+    if (!tag) return;
+    if (role === 'internal') {
+      tag.textContent = 'FOSB Internal · Cost';
+      tag.classList.add('internal');
+    } else {
+      tag.textContent = 'Agent · Price Per Unit';
+      tag.classList.remove('internal');
+    }
+  }
+  function setRole(newRole) {
+    if (newRole !== 'agent' && newRole !== 'internal') return;
+    if (role === newRole) return;
+    role = newRole;
+    try { localStorage.setItem('fosb_role', role); } catch (e) {}
+    updateRoleUI();
+    // Clear all per-line dismissed upsells (the savings/tier breaks change with role)
+    quote.forEach(line => { line.dismissedUpsells = []; });
+    renderQuote();
+    // If the Add Product modal is open, refresh its lists so prices reflect the new role
+    if ($('modal').classList.contains('show')) {
+      renderProductList();
+      renderAddons();
+      updateModalPreview();
+    }
+    // Update the modal subtitle if the function exists
+    if (typeof updateModalRoleLabel === 'function') updateModalRoleLabel();
+    showToast(role === 'agent' ? 'Agent view: Price Per Unit' : 'FOSB Internal view: Cost');
+  }
+  document.querySelectorAll('.role-pill').forEach(p => {
+    p.addEventListener('click', () => setRole(p.dataset.role));
+  });
+  updateRoleUI();
+  updateModalRoleLabel();
+
   renderQuote();
+
+  // ============ SETTINGS / PRICING.JSON FETCH ============
+  // Identify add-on codes (used to split parsed Excel rows into products vs add-ons)
+  const ADDON_CODES = new Set(['Emb1','Emb2','Emb3','Emb4','HD1','HD2','HD3','HDA3','HDA4','Silk1','Silk2','Silk3','Silk4']);
+
+  let pricingSource = 'Built-in';
+  let pricingUpdated = 'baked in';
+  let parsedPricing = null; // populated after Excel parse, used by download button
+
+  // Snapshot of the original baked-in catalog (for Reset feature)
+  const ORIGINAL_PRODUCTS = JSON.parse(JSON.stringify(PRODUCTS));
+  const ORIGINAL_ADDONS = JSON.parse(JSON.stringify(ADDONS));
+
+  function updateCatalogCount() {
+    const n = Object.keys(PRODUCTS).length;
+    const m = Object.keys(ADDONS).length;
+    const el = $('catalog-count');
+    if (el) el.textContent = n + ' items · ' + m + ' add-ons';
+  }
+  updateCatalogCount();
+
+  // Try sources in order: localStorage override → pricing.json → built-in
+  (async function loadPricing() {
+    // 1. localStorage override (per-browser, from "Apply Now" action)
+    try {
+      const local = localStorage.getItem('fosb_pricing_v1');
+      if (local) {
+        const data = JSON.parse(local);
+        if (data.products) PRODUCTS = data.products;
+        if (data.addons) ADDONS = data.addons;
+        pricingSource = 'Local (this browser)';
+        pricingUpdated = data.updated_at || 'unknown';
+        updateCatalogCount();
+        renderQuote();
+        $('reset-section').style.display = 'block'; // Show reset option since there's an override
+        console.log('Loaded local pricing override from localStorage');
+        return; // skip remote fetch
+      }
+    } catch (e) { /* ignore */ }
+
+    // 2. pricing.json from same folder
+    try {
+      const res = await fetch('pricing.json', { cache: 'no-cache' });
+      if (!res.ok) throw new Error('not found');
+      const data = await res.json();
+      if (data.products && typeof data.products === 'object') {
+        PRODUCTS = data.products;
+      }
+      if (data.addons && typeof data.addons === 'object') {
+        ADDONS = data.addons;
+      }
+      pricingSource = 'Remote (pricing.json)';
+      pricingUpdated = data.updated_at || 'unknown';
+      updateCatalogCount();
+      renderQuote();
+      console.log('Loaded pricing from pricing.json:', Object.keys(PRODUCTS).length, 'products');
+    } catch (e) {
+      console.log('Using built-in pricing (no override, no remote)');
+    }
+  })();
+
+  // Derive category from product name (mirrors the Python script logic)
+  function deriveCategory(name) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('cap')) return 'Caps';
+    if (n.includes('hat')) return 'Hats';
+    if (n.includes('apron')) return 'Aprons';
+    if (n.includes('towel')) return 'Towels';
+    if (n.includes('vest') || n.includes('tank top')) return 'Vests';
+    if (n.includes('windbreaker')) return 'Windbreakers';
+    if (n.includes('jacket') || n.includes('coverall')) return 'Jackets';
+    if (n.includes('polo')) return 'Polo Shirts';
+    if (n.includes('muslimah')) return 'Muslimah Wear';
+    if (n.includes('pants')) return 'Pants';
+    if (n.includes('t-shirt') || n.includes('tee')) return 'T-Shirts';
+    if (n.includes('shirt')) return 'Shirts';
+    return 'Other';
+  }
+
+  // ---- Settings modal handlers ----
+  function openSettings() {
+    // Refresh info display
+    $('info-products').textContent = Object.keys(PRODUCTS).length;
+    $('info-addons').textContent = Object.keys(ADDONS).length;
+    const sourceEl = $('info-source');
+    sourceEl.textContent = pricingSource;
+    const isCustom = pricingSource.startsWith('Remote') || pricingSource.startsWith('Local');
+    sourceEl.className = 'info-val ' + (isCustom ? 'source-remote' : 'source-builtin');
+    $('info-updated').textContent = pricingUpdated;
+    // Reset parsed section
+    $('parsed-section').style.display = 'none';
+    $('applied-row').style.display = 'none';
+    $('upload-hint').textContent = 'Reads PricingData sheet · Up to 1000 rows supported';
+    $('upload-hint').className = 'upload-hint';
+    parsedPricing = null;
+    // Show reset section only if there's a local override saved
+    const hasLocal = !!localStorage.getItem('fosb_pricing_v1');
+    $('reset-section').style.display = hasLocal ? 'block' : 'none';
+    $('settings-modal').classList.add('show');
+  }
+  function closeSettings() {
+    $('settings-modal').classList.remove('show');
+  }
+
+  $('settings-btn').addEventListener('click', openSettings);
+  $('settings-close').addEventListener('click', closeSettings);
+  $('settings-done').addEventListener('click', closeSettings);
+  $('settings-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') closeSettings();
+  });
+
+  // ---- Excel upload & parsing ----
+  const uploadZone = $('upload-zone');
+  const uploadInput = $('upload-input');
+  uploadZone.addEventListener('click', () => uploadInput.click());
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  });
+  uploadInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+  });
+
+  async function handleFile(file) {
+    const hint = $('upload-hint');
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      hint.textContent = 'Please upload an .xlsx or .xls file';
+      hint.className = 'upload-hint error';
+      return;
+    }
+    if (typeof XLSX === 'undefined') {
+      hint.textContent = 'Excel reader library not loaded — check your internet connection';
+      hint.className = 'upload-hint error';
+      return;
+    }
+    hint.textContent = 'Reading file...';
+    hint.className = 'upload-hint';
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      // Find the PricingData sheet
+      const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('pricing')) || wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
+      if (!sheet) {
+        hint.textContent = 'No PricingData sheet found in this file';
+        hint.className = 'upload-hint error';
+        return;
+      }
+      // Parse to JSON. Expects columns: code, item, brand, qty, price
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (rows.length === 0) {
+        hint.textContent = 'PricingData sheet is empty';
+        hint.className = 'upload-hint error';
+        return;
+      }
+
+      // Detect column names (handle variations like Code/code/CODE)
+      const sample = rows[0];
+      const keys = Object.keys(sample);
+      const findKey = (...candidates) => keys.find(k => candidates.includes(k.toLowerCase().trim()));
+      const codeKey = findKey('code', 'item code', 'product code');
+      const itemKey = findKey('item', 'item name', 'product', 'name', 'description');
+      const brandKey = findKey('brand', 'supplier');
+      const qtyKey = findKey('qty', 'quantity', 'min qty', 'tier qty');
+      // Two price columns: "Price per unit" = agent, "Cost" = internal
+      const agentPriceKey = findKey('price per unit', 'price', 'unit price', 'agent price');
+      const internalPriceKey = findKey('cost', 'internal cost', 'fosb cost');
+
+      if (!codeKey || !itemKey || !qtyKey || !agentPriceKey) {
+        hint.textContent = 'Couldn\'t find expected columns: Code, Item, Quantity, Price per unit';
+        hint.className = 'upload-hint error';
+        return;
+      }
+
+      // Group rows by code — capture BOTH price columns
+      const grouped = {};
+      rows.forEach(r => {
+        const code = String(r[codeKey] || '').trim();
+        if (!code) return;
+        if (!grouped[code]) {
+          grouped[code] = {
+            item: String(r[itemKey] || '').trim(),
+            brand: String((brandKey ? r[brandKey] : 'Oren') || 'Oren').trim(),
+            agent_tiers: [],
+            internal_tiers: [],
+          };
+        }
+        const qty = Number(r[qtyKey]);
+        const agentPrice = Number(r[agentPriceKey]);
+        const internalPrice = internalPriceKey ? Number(r[internalPriceKey]) : NaN;
+        if (!isNaN(qty) && qty > 0) {
+          if (!isNaN(agentPrice) && agentPrice > 0) {
+            grouped[code].agent_tiers.push({ qty, price: agentPrice });
+          }
+          if (!isNaN(internalPrice) && internalPrice > 0) {
+            grouped[code].internal_tiers.push({ qty, price: internalPrice });
+          }
+        }
+      });
+
+      // Sort tiers within each product by qty
+      Object.values(grouped).forEach(p => {
+        p.agent_tiers.sort((a, b) => a.qty - b.qty);
+        p.internal_tiers.sort((a, b) => a.qty - b.qty);
+      });
+
+      // Split into products vs add-ons
+      const newProducts = {};
+      const newAddons = {};
+      Object.entries(grouped).forEach(([code, p]) => {
+        // If no internal tiers were found, fall back to agent tiers (so FOSB role still works)
+        const final = {
+          item: p.item,
+          brand: p.brand,
+          agent_tiers: p.agent_tiers,
+          internal_tiers: p.internal_tiers.length ? p.internal_tiers : p.agent_tiers,
+        };
+        if (ADDON_CODES.has(code)) {
+          newAddons[code] = final;
+        } else {
+          newProducts[code] = { ...final, category: deriveCategory(p.item) };
+        }
+      });
+
+      // Build the structured pricing object
+      const today = new Date().toISOString().slice(0, 10);
+      parsedPricing = {
+        version: 1,
+        updated_at: today,
+        products: newProducts,
+        addons: newAddons,
+      };
+
+      // Show summary
+      $('parsed-products').textContent = Object.keys(newProducts).length;
+      $('parsed-addons').textContent = Object.keys(newAddons).length;
+      $('parsed-section').style.display = 'block';
+      hint.textContent = '✓ Parsed ' + Object.keys(newProducts).length + ' products and ' + Object.keys(newAddons).length + ' add-ons';
+      hint.className = 'upload-hint success';
+
+    } catch (err) {
+      console.error(err);
+      hint.textContent = 'Error reading Excel file: ' + err.message;
+      hint.className = 'upload-hint error';
+    }
+  }
+
+  // Helper: download a Blob with a given filename
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // "Apply to This Browser Now" — replace in-memory data + persist to localStorage
+  $('apply-now-btn').addEventListener('click', () => {
+    if (!parsedPricing) return;
+    PRODUCTS = JSON.parse(JSON.stringify(parsedPricing.products));
+    ADDONS = JSON.parse(JSON.stringify(parsedPricing.addons));
+    try {
+      localStorage.setItem('fosb_pricing_v1', JSON.stringify(parsedPricing));
+    } catch (e) { /* localStorage may be disabled; in-memory update still works */ }
+    pricingSource = 'Local (this browser)';
+    pricingUpdated = parsedPricing.updated_at || new Date().toISOString().slice(0, 10);
+    updateCatalogCount();
+    renderQuote();
+    // Refresh settings UI to reflect new state
+    $('info-products').textContent = Object.keys(PRODUCTS).length;
+    $('info-addons').textContent = Object.keys(ADDONS).length;
+    $('info-source').textContent = pricingSource;
+    $('info-source').className = 'info-val source-remote';
+    $('info-updated').textContent = pricingUpdated;
+    $('applied-row').style.display = 'flex';
+    $('reset-section').style.display = 'block';
+    showToast('New Prices Applied to This Browser');
+  });
+
+  // "Download New index.html" — bake the new prices into a fresh HTML file
+  $('download-html-btn').addEventListener('click', async () => {
+    if (!parsedPricing) return;
+    try {
+      // Fetch the current HTML page itself
+      const res = await fetch(window.location.href, { cache: 'no-cache' });
+      let html = await res.text();
+
+      // Build replacement: minified JSON for compactness (matches original style)
+      const newProductsJson = JSON.stringify(parsedPricing.products);
+      const newAddonsJson = JSON.stringify(parsedPricing.addons);
+
+      // Replace the existing PRODUCTS = {...}; declaration
+      // The original uses: let PRODUCTS = {"AP03":...};  (one long line)
+      html = html.replace(
+        /let PRODUCTS = \{[\s\S]*?\};(\s*\n\s*let ADDONS)/,
+        'let PRODUCTS = ' + newProductsJson + ';$1'
+      );
+      html = html.replace(
+        /let ADDONS = \{[\s\S]*?\};(\s*\n)/,
+        'let ADDONS = ' + newAddonsJson + ';$1'
+      );
+
+      // Sanity check — did we actually swap them?
+      if (!html.includes(newProductsJson.slice(0, 50))) {
+        showToast('Failed to Update HTML — Use pricing.json Instead');
+        return;
+      }
+
+      const blob = new Blob([html], { type: 'text/html' });
+      downloadBlob(blob, 'index.html');
+      showToast('New index.html Downloaded');
+    } catch (e) {
+      console.error(e);
+      showToast('Download Failed — Try pricing.json Instead');
+    }
+  });
+
+  // "Reset to Original Prices" — clear localStorage override
+  $('reset-prices-btn').addEventListener('click', () => {
+    if (!confirm('Reset to the original baked-in prices? Your local override will be removed.')) return;
+    localStorage.removeItem('fosb_pricing_v1');
+    PRODUCTS = JSON.parse(JSON.stringify(ORIGINAL_PRODUCTS));
+    ADDONS = JSON.parse(JSON.stringify(ORIGINAL_ADDONS));
+    pricingSource = 'Built-in';
+    pricingUpdated = 'baked in';
+    updateCatalogCount();
+    renderQuote();
+    closeSettings();
+    showToast('Prices Reset to Original');
+  });
+
+  // Download parsed pricing as pricing.json
+  $('download-pricing-btn').addEventListener('click', () => {
+    if (!parsedPricing) return;
+    const json = JSON.stringify(parsedPricing, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    downloadBlob(blob, 'pricing.json');
+    showToast('pricing.json Downloaded');
+  });
+
 })();
 </script>
 </body>
